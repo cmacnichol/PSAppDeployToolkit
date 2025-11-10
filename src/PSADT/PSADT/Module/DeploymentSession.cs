@@ -370,6 +370,10 @@ namespace PSADT.Module
 
                         // Update our app variables with new values.
                         var msiProps = (IReadOnlyDictionary<string, object>)ModuleDatabase.InvokeScript(ScriptBlock.Create("$gmtpParams = @{ Path = $args[0] }; if ($args[1]) { $gmtpParams.Add('TransformPath', $args[1]) }; & $Script:CommandTable.'Get-ADTMsiTableProperty' @gmtpParams -Table Property"), DefaultMsiFile!, DefaultMstFile!).First().BaseObject;
+                        if (string.IsNullOrWhiteSpace(_appVendor))
+                        {
+                            _appVendor = (string)msiProps["Manufacturer"];
+                        }
                         if (string.IsNullOrWhiteSpace(_appName))
                         {
                             _appName = (string)msiProps["ProductName"];
@@ -427,14 +431,28 @@ namespace PSADT.Module
                 // Build the Installation Title.
                 if (string.IsNullOrWhiteSpace(_installTitle))
                 {
-                    _installTitle = $"{_appVendor} {_appName} {_appVersion}".Trim();
+                    if (!string.IsNullOrWhiteSpace(_appVendor) && !(_appName?.StartsWith(_appVendor, StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        _installTitle = $"{_appVendor} {_appName} {_appVersion}".Trim();
+                    }
+                    else
+                    {
+                        _installTitle = $"{_appName} {_appVersion}".Trim();
+                    }
                 }
                 _installTitle = Regex.Replace(_installTitle, @"\s{2,}", string.Empty);
 
                 // Build the Installation Name.
                 if (string.IsNullOrWhiteSpace(_installName))
                 {
-                    _installName = $"{_appVendor}_{_appName}_{_appVersion}_{_appArch}_{_appLang}_{_appRevision}";
+                    if (!string.IsNullOrWhiteSpace(_appVendor) && !(_appName?.StartsWith(_appVendor, StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        _installName = $"{_appVendor}_{_appName}_{_appVersion}_{_appArch}_{_appLang}_{_appRevision}";
+                    }
+                    else
+                    {
+                        _installName = $"{_appName}_{_appVersion}_{_appArch}_{_appLang}_{_appRevision}";
+                    }
                 }
                 var invalidChars = (Regex)adtEnv["invalidFileNameCharsRegExPattern"]!;
                 _installName = invalidChars.Replace(Regex.Replace(_installName!.Trim('_').Replace(" ", null), "_+", "_"), string.Empty);
